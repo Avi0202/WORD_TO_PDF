@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Converter & Merger</title>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f7fa;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative;
+            padding-bottom: 10px;
+        }
+        h1 span.blue {
+            color: #2B579A; /* Word blue */
+        }
+        h1 span.red {
+            color: #C1272D; /* PDF red */
+        }
+        h1::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 25%;
+            right: 25%;
+            height: 3px;
+            background: linear-gradient(to right, #2B579A, #C1272D);
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 25px;
+            width: 100%;
+            max-width: 300px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+        }
+        .card.word-to-pdf::before {
+            background-color: #2B579A; /* Word blue */
+        }
+        .card.pdf-to-word::before, 
+        .card.merge-pdfs::before {
+            background-color: #C1272D; /* PDF red */
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        .card h2 {
+            margin-top: 0;
+            text-align: center;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+        
+        /* Color-specific styles */
+        .card.word-to-pdf h2 {
+            color: #2B579A; /* Word blue */
+        }
+        .card.pdf-to-word h2 {
+            color: #C1272D; /* PDF red */
+        }
+        .card.merge-pdfs h2 {
+            color: #C1272D; /* PDF red */
+        }
+        
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        input[type="file"] {
+            margin-bottom: 15px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            position: relative;
+        }
+        .word-to-pdf input[type="file"]:focus {
+            outline: 2px solid #2B579A; /* Word blue */
+        }
+        .pdf-to-word input[type="file"]:focus,
+        .merge-pdfs input[type="file"]:focus {
+            outline: 2px solid #C1272D; /* PDF red */
+        }
+        button {
+            border: none;
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+            color: white;
+        }
+        
+        /* Button colors based on operation */
+        .word-to-pdf button {
+            background-color: #2B579A; /* Word blue */
+        }
+        .word-to-pdf button:hover {
+            background-color: #1e3f6f;
+        }
+        
+        .pdf-to-word button {
+            background-color: #C1272D; /* PDF red */
+        }
+        .pdf-to-word button:hover {
+            background-color: #9a1e25;
+        }
+        
+        .merge-pdfs button {
+            background-color: #C1272D; /* PDF red */
+        }
+        .merge-pdfs button:hover {
+            background-color: #9a1e25;
+        }
+        
+        .merge-pdfs button:disabled {
+            background-color: #d3888d;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            text-align: center;
+            margin-top: 10px;
+            display: none;
+        }
+        .success-message {
+            color: #27ae60;
+            text-align: center;
+            margin-top: 10px;
+            display: none;
+        }
+        .error-message {
+            color: #e74c3c;
+            text-align: center;
+            margin-top: 10px;
+            display: none;
+        }
+        
+        .loading.word-to-pdf-loading {
+            color: #2B579A; /* Word blue */
+        }
+        
+        .loading.pdf-to-word-loading,
+        .loading.merge-pdfs-loading {
+            color: #C1272D; /* PDF red */
+        }
+        
+        .pdf-queue-container {
+            margin: 15px 0;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            padding: 10px;
+            background-color: #f9f9f9;
+        }
+        
+        .pdf-queue-container h3 {
+            margin-top: 0;
+            font-size: 16px;
+            color: #C1272D; /* PDF red */
+        }
+        
+        .pdf-queue-help {
+            font-size: 12px;
+            color: #777;
+            margin-bottom: 10px;
+        }
+        
+        .pdf-queue {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            min-height: 50px;
+        }
+        
+        .pdf-queue li {
+            background-color: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: move;
+            transition: background-color 0.2s;
+        }
+        
+        .pdf-queue li:hover {
+            background-color: #ffeef0; /* Light red for PDF items */
+        }
+        
+        .pdf-queue .remove-pdf {
+            color: #C1272D; /* PDF red */
+            cursor: pointer;
+            font-weight: bold;
+            padding: 0 5px;
+        }
+        
+        .pdf-queue .file-name {
+            flex-grow: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .pdf-queue .drag-handle {
+            margin-right: 8px;
+            color: #777;
+            cursor: move;
+        }
+        
+        /* File icons */
+        .file-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .word-icon {
+            color: #2B579A; /* Word blue */
+        }
+        
+        .pdf-icon {
+            color: #C1272D; /* PDF red */
+        }
+        
+        .arrow-icon {
+            color: #666;
+            font-size: 1.5rem;
+            margin: 0 10px;
+        }
+        
+        .file-conversion {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .pdf-queue .file-name::before {
+            content: '\f1c1'; /* PDF file icon */
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            color: #C1272D;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1><span class="blue">Document</span> <span class="red">Converter & Merger</span></h1>
+    
+    <div class="container">
+        <div class="card word-to-pdf">
+            <h2>Word to PDF</h2>
+            <div class="file-conversion">
+                <div class="file-icon word-icon"><i class="fas fa-file-word"></i></div>
+                <div class="arrow-icon"><i class="fas fa-arrow-right"></i></div>
+                <div class="file-icon pdf-icon"><i class="fas fa-file-pdf"></i></div>
+            </div>
+            <form id="word-to-pdf-form">
+                <label for="word-file">Select Word Document:</label>
+                <input type="file" id="word-file" name="file" accept=".doc,.docx" required>
+                <button type="submit">Convert to PDF</button>
+            </form>
+            <div class="loading" id="word-to-pdf-loading">Converting...</div>
+            <div class="success-message" id="word-to-pdf-success">Conversion successful!</div>
+            <div class="error-message" id="word-to-pdf-error"></div>
+        </div>
+        
+        <div class="card pdf-to-word">
+            <h2>PDF to Word</h2>
+            <div class="file-conversion">
+                <div class="file-icon pdf-icon"><i class="fas fa-file-pdf"></i></div>
+                <div class="arrow-icon"><i class="fas fa-arrow-right"></i></div>
+                <div class="file-icon word-icon"><i class="fas fa-file-word"></i></div>
+            </div>
+            <form id="pdf-to-word-form">
+                <label for="pdf-file">Select PDF Document:</label>
+                <input type="file" id="pdf-file" name="file" accept=".pdf" required>
+                <button type="submit">Convert to Word</button>
+            </form>
+            <div class="loading" id="pdf-to-word-loading">Converting...</div>
+            <div class="success-message" id="pdf-to-word-success">Conversion successful!</div>
+            <div class="error-message" id="pdf-to-word-error"></div>
+        </div>
+        
+        <div class="card merge-pdfs">
+            <h2>Merge PDFs</h2>
+            <div class="file-conversion">
+                <div class="file-icon pdf-icon"><i class="fas fa-file-pdf"></i></div>
+                <div class="arrow-icon"><i class="fas fa-plus"></i></div>
+                <div class="file-icon pdf-icon"><i class="fas fa-file-pdf"></i></div>
+                <div class="arrow-icon"><i class="fas fa-equals"></i></div>
+                <div class="file-icon pdf-icon"><i class="fas fa-file-pdf"></i></div>
+            </div>
+            <form id="merge-pdfs-form">
+                <label for="pdf-files">Select PDF Files:</label>
+                <input type="file" id="pdf-files" accept=".pdf" multiple>
+                <button type="button" id="add-pdfs-btn">Add to Queue</button>
+                
+                <div class="pdf-queue-container">
+                    <h3>PDF Queue (Drag to Reorder)</h3>
+                    <p class="pdf-queue-help">Drag files to change the merge order</p>
+                    <ul id="pdf-queue" class="pdf-queue"></ul>
+                </div>
+                
+                <button type="submit" id="merge-btn" disabled>Merge PDFs</button>
+            </form>
+            <div class="loading" id="merge-pdfs-loading">Merging...</div>
+            <div class="success-message" id="merge-pdfs-success">Merge successful!</div>
+            <div class="error-message" id="merge-pdfs-error"></div>
+        </div>
+    </div>
+
+    <script>
+        // Word to PDF conversion
+        document.getElementById('word-to-pdf-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('word-file');
+            const loading = document.getElementById('word-to-pdf-loading');
+            const success = document.getElementById('word-to-pdf-success');
+            const error = document.getElementById('word-to-pdf-error');
+            
+            if (!fileInput.files.length) {
+                error.textContent = "Please select a file";
+                error.style.display = "block";
+                return;
+            }
+            
+            // Reset messages
+            loading.style.display = "block";
+            success.style.display = "none";
+            error.style.display = "none";
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            try {
+                const response = await fetch('/convert/word-to-pdf', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Conversion failed');
+                }
+                
+                // Get the filename from the Content-Disposition header if available
+                const contentDisposition = response.headers.get('Content-Disposition');
+                let filename = 'converted.pdf';
+                if (contentDisposition) {
+                    const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+                    if (filenameMatch) {
+                        filename = filenameMatch[1];
+                    }
+                }
+                
+                // Convert the response to a blob and create a download link
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                
+                loading.style.display = "none";
+                success.style.display = "block";
+            } catch (err) {
+                loading.style.display = "none";
+                error.textContent = err.message;
+                error.style.display = "block";
+                console.error('Error:', err);
+            }
+        });
+
+        // PDF to Word conversion
+        document.getElementById('pdf-to-word-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('pdf-file');
+            const loading = document.getElementById('pdf-to-word-loading');
+            const success = document.getElementById('pdf-to-word-success');
+            const error = document.getElementById('pdf-to-word-error');
+            
+            if (!fileInput.files.length) {
+                error.textContent = "Please select a file";
+                error.style.display = "block";
+                return;
+            }
+            
+            // Reset messages
+            loading.style.display = "block";
+            success.style.display = "none";
+            error.style.display = "none";
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            try {
+                const response = await fetch('/convert/pdf-to-word', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Conversion failed');
+                }
+                
+                // Get the filename from the Content-Disposition header if available
+                const contentDisposition = response.headers.get('Content-Disposition');
+                let filename = 'converted.docx';
+                if (contentDisposition) {
+                    const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+                    if (filenameMatch) {
+                        filename = filenameMatch[1];
+                    }
+                }
+                
+                // Convert the response to a blob and create a download link
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                
+                loading.style.display = "none";
+                success.style.display = "block";
+            } catch (err) {
+                loading.style.display = "none";
+                error.textContent = err.message;
+                error.style.display = "block";
+                console.error('Error:', err);
+            }
+        });
+
+        // PDF Queue Management and Drag-and-Drop
+        document.addEventListener('DOMContentLoaded', function() {
+            const pdfFileInput = document.getElementById('pdf-files');
+            const addButton = document.getElementById('add-pdfs-btn');
+            const pdfQueue = document.getElementById('pdf-queue');
+            const mergeButton = document.getElementById('merge-btn');
+            const mergeForm = document.getElementById('merge-pdfs-form');
+            const loading = document.getElementById('merge-pdfs-loading');
+            const success = document.getElementById('merge-pdfs-success');
+            const error = document.getElementById('merge-pdfs-error');
+            
+            // Queue of files to be merged
+            let filesToMerge = [];
+            
+            // Function to update merge button state
+            function updateMergeButtonState() {
+                mergeButton.disabled = filesToMerge.length < 2;
+                console.log("Button state updated. Files in queue:", filesToMerge.length, "Button disabled:", mergeButton.disabled);
+            }
+            
+            // Initialize merge button state
+            updateMergeButtonState();
+            
+            // Add PDFs to the queue
+            addButton.addEventListener('click', function() {
+                if (!pdfFileInput.files.length) {
+                    // Only show error if there are no files already in the queue
+                    if (filesToMerge.length === 0) {
+                        error.textContent = "Please select at least one PDF file";
+                        error.style.display = "block";
+                    }
+                    return;
+                }
+                
+                // Add the selected files to our queue
+                for (const file of pdfFileInput.files) {
+                    if (!file.name.endsWith('.pdf')) {
+                        error.textContent = "Only PDF files are allowed";
+                        error.style.display = "block";
+                        continue;
+                    }
+                    
+                    // Check if file already exists in the queue
+                    const fileExists = filesToMerge.some(f => f.name === file.name && f.size === file.size);
+                    if (!fileExists) {
+                        filesToMerge.push(file);
+                        addFileToQueueUI(file);
+                    }
+                }
+                
+                // Reset the file input
+                pdfFileInput.value = null;
+                
+                // Update merge button state
+                updateMergeButtonState();
+                
+                // Hide error message if it was showing
+                error.style.display = "none";
+            });
+            
+            // Add a file to the queue UI
+            function addFileToQueueUI(file) {
+                const li = document.createElement('li');
+                li.dataset.filename = file.name;
+                li.dataset.filesize = file.size;
+                li.draggable = true;
+                
+                const dragHandle = document.createElement('span');
+                dragHandle.className = 'drag-handle';
+                dragHandle.innerHTML = '☰';
+                
+                const fileName = document.createElement('span');
+                fileName.className = 'file-name';
+                fileName.textContent = file.name;
+                
+                const removeButton = document.createElement('span');
+                removeButton.className = 'remove-pdf';
+                removeButton.textContent = '×';
+                removeButton.addEventListener('click', function() {
+                    // Remove from UI
+                    li.remove();
+                    
+                    // Remove from array
+                    filesToMerge = filesToMerge.filter(f => !(f.name === file.name && f.size === file.size));
+                    
+                    // Update merge button state
+                    updateMergeButtonState();
+                });
+                
+                li.appendChild(dragHandle);
+                li.appendChild(fileName);
+                li.appendChild(removeButton);
+                pdfQueue.appendChild(li);
+                
+                // Setup drag events for this item
+                setupDragEvents(li);
+            }
+            
+            // Set up drag and drop functionality
+            function setupDragEvents(item) {
+                item.addEventListener('dragstart', handleDragStart);
+                item.addEventListener('dragover', handleDragOver);
+                item.addEventListener('dragenter', handleDragEnter);
+                item.addEventListener('dragleave', handleDragLeave);
+                item.addEventListener('drop', handleDrop);
+                item.addEventListener('dragend', handleDragEnd);
+            }
+            
+            let draggedItem = null;
+            
+            function handleDragStart(e) {
+                this.style.opacity = '0.4';
+                draggedItem = this;
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', this.dataset.filename);
+            }
+            
+            function handleDragOver(e) {
+                if (e.preventDefault) {
+                    e.preventDefault();
+                }
+                e.dataTransfer.dropEffect = 'move';
+                return false;
+            }
+            
+            function handleDragEnter() {
+                this.classList.add('over');
+            }
+            
+            function handleDragLeave() {
+                this.classList.remove('over');
+            }
+            
+            function handleDrop(e) {
+                if (e.stopPropagation) {
+                    e.stopPropagation();
+                }
+                
+                if (draggedItem !== this) {
+                    // Reorder in the DOM
+                    const allItems = Array.from(pdfQueue.children);
+                    const draggedIndex = allItems.indexOf(draggedItem);
+                    const dropIndex = allItems.indexOf(this);
+                    
+                    if (draggedIndex < dropIndex) {
+                        pdfQueue.insertBefore(draggedItem, this.nextSibling);
+                    } else {
+                        pdfQueue.insertBefore(draggedItem, this);
+                    }
+                    
+                    // Reorder in the array
+                    const temp = filesToMerge[draggedIndex];
+                    filesToMerge.splice(draggedIndex, 1);
+                    filesToMerge.splice(dropIndex, 0, temp);
+                }
+                
+                return false;
+            }
+            
+            function handleDragEnd() {
+                // Reset opacity
+                this.style.opacity = '1';
+                
+                // Remove 'over' class from all items
+                const items = document.querySelectorAll('.pdf-queue li');
+                items.forEach(item => {
+                    item.classList.remove('over');
+                });
+            }
+            
+            // Handle the merge form submission
+            mergeForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                if (filesToMerge.length < 2) {
+                    error.textContent = "Please add at least 2 PDF files to merge";
+                    error.style.display = "block";
+                    return;
+                }
+                
+                // Reset messages
+                loading.style.display = "block";
+                success.style.display = "none";
+                error.style.display = "none";
+                
+                const formData = new FormData();
+                
+                // Add files in the order they appear in the queue
+                for (const file of filesToMerge) {
+                    formData.append('files', file);
+                }
+                
+                try {
+                    loading.style.display = "block";
+                    success.style.display = "none";
+                    error.style.display = "none";
+                    
+                    console.log(`Attempting to merge ${filesToMerge.length} PDF files`);
+                    
+                    const response = await fetch('/merge/pdf', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    console.log('Server response status:', response.status);
+                    
+                    if (!response.ok) {
+                        const contentType = response.headers.get("content-type");
+                        if (contentType && contentType.indexOf("application/json") !== -1) {
+                            // Parse JSON error
+                            const errorData = await response.json();
+                            console.error('Server error details:', errorData);
+                            throw new Error(errorData.detail || 'Merging failed');
+                        } else {
+                            // Handle non-JSON error
+                            const errorText = await response.text();
+                            console.error('Server responded with non-JSON error:', errorText);
+                            throw new Error('Server error: Unable to merge PDFs. Please try again.');
+                        }
+                    }
+                    
+                    // Convert the response to a blob and create a download link
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = 'merged.pdf';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    
+                    loading.style.display = "none";
+                    success.style.display = "block";
+                    
+                    // Clear the queue after successful merge
+                    pdfQueue.innerHTML = '';
+                    filesToMerge = [];
+                    updateMergeButtonState();
+                } catch (err) {
+                    loading.style.display = "none";
+                    error.textContent = err.message;
+                    error.style.display = "block";
+                    console.error('Error during PDF merge operation:', err);
+                }
+            });
+        });
+    </script>
+</body>
+</html> 
